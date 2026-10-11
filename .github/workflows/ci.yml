@@ -27,25 +27,39 @@ jobs:
           mode: classify
           pr: ${{ github.event.pull_request.number }}
 
-  # TODO: replace this with the project's real jobs (test, build, lint,
-  # ...), each carrying `needs: classify` and
-  # `if: needs.classify.outputs.docs_only != 'true'`. Add each job's name
-  # to the `lanes` job's own `needs:` and `results:` below, and delete this
-  # placeholder once a real job exists -- see mikelward/lanes's README for
-  # the documented shape.
-  placeholder:
+  # dwl's main branch builds against the latest wlroots release
+  # (`wlroots-0.20` in config.mk), which Ubuntu runners don't ship, so the
+  # build runs in an Arch Linux container. Both variants compile: the
+  # XWayland one turns on the `#ifdef XWAYLAND` code paths.
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     needs: classify
     if: needs.classify.outputs.docs_only != 'true'
+    container:
+      image: archlinux:base-devel
+    strategy:
+      fail-fast: false
+      matrix:
+        xwayland: [false, true]
     steps:
-      - run: echo "no real jobs yet -- see the TODO in this file"
+      - run: >-
+          pacman -Syu --noconfirm --needed
+          wlroots0.20 wayland wayland-protocols libinput libxkbcommon
+          libxcb xcb-util-wm pkgconf
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - if: ${{ !matrix.xwayland }}
+        run: make
+      - if: ${{ matrix.xwayland }}
+        run: make XWAYLAND=-DXWAYLAND XLIBS="xcb xcb-icccm"
 
   lanes:
     name: lanes
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [classify, placeholder]
+    needs: [classify, build]
     if: always()
     steps:
       - uses: actions/checkout@v5
@@ -57,4 +71,4 @@ jobs:
           pr: ${{ github.event.pull_request.number }}
           classify-result: ${{ needs.classify.result }}
           base-sha: ${{ needs.classify.outputs.base_sha }}
-          results: placeholder=${{ needs.placeholder.result }}
+          results: build=${{ needs.build.result }}
