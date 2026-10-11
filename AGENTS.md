@@ -7,16 +7,19 @@ Edit `AGENTS.md`.
 
 ## What this repository is
 
-TODO: one paragraph -- what it does, what it is built with, and what a
-reader has to know before changing anything. Name the normative documents
-(`SPEC.md`, `TODO.md`, `README.md`) if there are any.
+dwl is a compact, hackable Wayland compositor based on wlroots, written in
+C and built with a plain POSIX `Makefile`. `main` builds against the latest
+wlroots release (the `wlroots-0.20` pkg-config name in `config.mk`).
+User configuration lives in `config.def.h` (copied to `config.h` on first
+build); `README.md` and `CHANGELOG.md` are the normative documents.
 
 ## Building and testing
 
-TODO: the commands a contributor actually runs, and which one of them to
-run before every commit. `.github/workflows/ci.yml` ships with a
-placeholder job standing in for this project's real ones -- replacing it
-and describing it here are the same task.
+Run `make` before every commit; it compiles `dwl.c` with warnings enabled.
+To also compile the `#ifdef XWAYLAND` paths, run
+`make XWAYLAND=-DXWAYLAND XLIBS="xcb xcb-icccm"`. There is no test suite.
+CI (`.github/workflows/ci.yml`, job `build`) runs both builds in an Arch
+Linux container, since that is where a packaged wlroots 0.20 is available.
 
 ## Everything below
 
