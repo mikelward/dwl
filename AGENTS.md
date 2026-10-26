@@ -1,9 +1,20 @@
+---
+trigger: always_on
+alwaysApply: true
+last_modified: 2026-10-26
+---
+
 # AGENTS.md
 
 Conventions for AI agents working in this repository.
 
 `CLAUDE.md` imports this file, so every agent reads the same conventions.
 Edit `AGENTS.md`.
+
+**At the start of every session, print the full absolute path of the
+`AGENTS.md` you loaded and its `last_modified` date** (front matter), so a
+stale or wrong copy is caught before it steers the work. Bump `last_modified`
+whenever you edit this file.
 
 ## What this repository is
 
@@ -52,8 +63,8 @@ and delete one that has stopped biting.
 - Verify tests are passing as you go and when committing.
 - Proactively run lint and presubmit tests and proactively fix them.
 - Check applicable coding conventions and apply them proactively.
-- Do not introduce extra newlines all on their own. Check all added newlines
-  and ensure they're in blocks we need to be touching.
+- Don't add stray blank lines; check each added newline is in a block you
+  need to touch.
 - If preexisting tests are already red when you start a task, fix them as the
   *first* commit of the series — don't stack new work on a broken baseline.
   If the failure is genuinely unrelated and out of scope, say so up front and
@@ -69,23 +80,29 @@ and delete one that has stopped biting.
   changes if they relate to something else in the same session or branch.
 - If you make a mistake, suggest changes to AGENTS.md or skills to improve
   future results. Add a new rule the first time something bites, not the third.
+- Keep AGENTS.md under 22,000 bytes (`wc -c AGENTS.md`): Antigravity caps rule
+  files at 24 KB and silently truncates the tail.
 - Let me know if we're getting close to the context window and should compact.
 
 # Talking to me
 
-- One question at a time, in plain chat — not a structured multiple-choice
-  picker (broken on some mobile clients). Wait for the answer before
-  proceeding on an assumed one, and don't interrupt while I'm still typing.
+- One question at a time, in plain chat or your client's question tool
+  (`AskUserQuestion` in Claude Code, `ask_question` in Antigravity). Wait for
+  the answer before proceeding on an assumed one, and don't interrupt while
+  I'm still typing.
 - Respond to anything I send mid-task in your very next output, before
-  continuing other tool calls.
+  continuing other tool calls. **Claude Code only** (maintainer, 2026-10-25):
+  its app reliably shows just a turn's last message, so reply only there,
+  answering a mid-turn message at a stopping point soon.
 - Keep replies short — lead with the one thing that matters, then ask
   before unloading more.
-- Don't narrate routine machinery — a check run flipping, a re-run, a
-  scheduled check re-arming, a resolved thread, an echo of your own reply —
-  just act on it.
-- Don't report your own caught-and-fixed mistakes. Flag it only when it
-  cost me something, is still outstanding, or would change a decision I'd
-  make knowing about it.
+- Message me only when I need to see it — each message notifies my phone. Work
+  and listen in silence; speak up for a question or blocker, something to
+  merge or act on, a merge, an autopilot decision (to review when seen, never
+  waited on), or a change from the plan, the docs or my instructions, a
+  review-prompted one included. Never for progress (a client's nudge doesn't
+  count), a review or a push alone (its report rides the next message),
+  routine machinery, or a mistake caught and fixed before it reached the repo.
 - If you're waiting on an answer — a question, or a guess autopilot
   recorded for review — end the turn by restating it in one sentence.
   Nothing pending, no line.
@@ -95,6 +112,12 @@ and delete one that has stopped biting.
 - "Drive" = keep looping without stopping to ask each time: implement,
   open the PR, address review, merge once green and reviewed, pick the
   next task, repeat — until the work runs out or I say stop.
+- Ordered work ("next", "then", "after that", "follow-up") may open its PR in
+  parallel but merges only once every earlier item this session was given,
+  and any PR the paragraph names, has finished with its PRs merged — any
+  repo, no time cap; if one won't finish, hold it and ask, autopilot
+  included. Arm no auto-merge on it until then (auto-merge can't see the
+  order). Read the list from the session's record, not memory.
 - "Merge in order" (or "drive in order") = drive to merge that yields to
   older PRs close to landing. Merge by hand, never auto-merge (disarm any
   already armed). Just before merging, check every open, non-draft,
@@ -110,6 +133,21 @@ and delete one that has stopped biting.
   branches up to date, or where it conflicts — and merge on the checks and
   approval for its current head, fresh ones if that moved it, rerunning this
   check first. Say which lower PR you waited on, or passed over as quiet.
+- A merge can leave other open PRs on its base `dirty` (or `behind` where
+  branches must be up to date), and nothing tells them. At your first turn
+  after one of your PRs merges, by hand or auto-merge, send every other open
+  PR on that base that another session drives (its body ends with the
+  session URL) one message, naming that PR and saying only that its base now
+  points at `<sha>`, the post-merge tip — whatever its state reads, since
+  GitHub may still be computing mergeability. Name no merge and no other PR:
+  an older copy of these rules reads either as its own merge cue. Receiving
+  one, fetch the base and your PR's head by refspec (unshallowing a shallow
+  clone) and test that head against the fetched tip, not `<sha>`, which a
+  later merge may have passed: `behind` if `git merge-base --is-ancestor
+  <tip> <head>` exits 1, `dirty` if `git merge-tree --write-tree` (Git
+  2.38+) exits 1; any other exit is a failure to report, not an answer. Your
+  own rules decide the rebase. Skip a PR with no session URL, or when your
+  client only has local subagent messaging; don't retry a failed send.
 - "Autopilot" = drive without blocking on me. Take the reversible,
   cheapest-to-undo guess and keep going; log each one in TODO.md under a
   "Decisions needing review" heading (what, the alternative, why it's
@@ -130,13 +168,22 @@ and delete one that has stopped biting.
   branch from `origin/main`, push, or open a PR — say so and stop rather than
   improvising a local substitute.
 - Develop on `<agent>/<short-topic>` branches off `origin/main`, where
-  `<agent>` is your own short name (`claude/...` for Claude Code, `codex/...`
-  for Codex, `cursor/...` for Cursor). Don't hard-code `claude/` unless you
+  `<agent>` is your own short name (`claude/...` for Claude Code,
+  `gemini/...` for Gemini / Antigravity, `codex/...` for Codex, `cursor/...`
+  for Cursor). Don't hard-code `claude/` unless you
   *are* Claude Code. Never commit directly to `main` / `master`. One topic per
   branch.
-- Use standard commit message formatting. Imperative/present mood. "Fix", not
-  "Fixed". First line is <66 chars and has no trailing dot. Remainder of the
-  commit message should cover both the what and they why.
+- Title commits like a changelog line (maintainer, 2026-10-23): imperative
+  mood ("Fix", not "Fixed"), then the change as someone using dwl sees it,
+  in plain English. The first line is under 66 chars with no trailing dot,
+  e.g. `Fix …` for what was broken, `Improve …` for what got better, `Add …`
+  for what's new, with an optional parenthetical saying how. The body covers
+  the what and the why, including the scenario and the mechanism. PR titles
+  match.
+- Never name the coding agent's model or version (`Opus 4.8`, `Sonnet`,
+  `Gemini …`, `claude-*`, `gemini-*`) in a commit, PR, comment, or pushed
+  artifact; keep it to chat. Generic attribution (`Co-Authored-By: Claude` /
+  `Gemini`, `Claude-Session:`, "Generated with Claude Code") is fine.
 - One logical surviving change per commit. Rewrite unmerged commits freely
   (squash, amend, reorder, split) so each landing commit is one coherent
   change. Review-fix noise shouldn't survive into `main`.
@@ -182,11 +229,11 @@ and delete one that has stopped biting.
   a branch is ready — don't park a finished branch waiting to be told,
   unless I've said otherwise ("just commit", "no PR yet"), which holds
   until I lift it.
-- On every push, update the PR title and body so they describe the full,
-  latest state of the branch — not the scope it had when it was opened.
-  Re-read the diff against `origin/main` and patch whatever drifted, then
-  post the PR link in the chat reply for that push, not only at the end of
-  the conversation.
+- On every push, update the PR title and body to the full, latest state of
+  the branch, not the scope it had when opened: re-read the diff against
+  `origin/main`, patch whatever drifted, and post the PR link in the next
+  message after that push, not only at the end. With no PR yet, push, then
+  update it as soon as one is opened.
 - End every reply with the open-PR link (or `.../compare/main...<branch>`
   until a PR exists). Never link to a closed or merged PR — except when the
   reply *is* post-merge follow-up on that PR, where linking it is correct.
@@ -198,16 +245,26 @@ and delete one that has stopped biting.
   before acting; if it doesn't hold up, reply saying why and decline.
 - Never leave a review comment thread silently dismissed. Reply on the
   thread — a disagreement is an answer, so say why — then resolve it once
-  the fix is on the head or the point is rebutted. Acknowledgement noise
+  the fix is on the head or the point is rebutted. Acknowledgment noise
   ("good catch, will do") is fine and preferred over silence.
 - Where an automated reviewer (Codex or similar) is configured, it runs on
   its own — don't request it manually unless nothing's come back after a
-  few minutes. Read its actual verdict for the *current* head (a reaction
-  or status tied to that commit — most such tools revoke it on every
-  push), not a stale one from before your last push and not a guess; a
-  finding blocks merge until fixed or rebutted with reasoning on the
-  thread. Findings can land as a top-level PR comment instead of an
-  inline thread — check both before merging, not just review threads.
+  few minutes. A review that hangs — nothing back five minutes after a
+  push or request, or stuck in progress (👀) ten minutes on — gets a manual
+  request; one that hangs too gets a second an hour later, and only a
+  second that hangs as well comes to me, never the first. Read its actual
+  verdict for the *current* head (a reaction or status tied to that commit
+  — most such tools revoke it on every push), not a stale one from before
+  your last push and not a guess; a finding blocks merge until fixed or
+  rebutted with reasoning on the thread. Findings can land as a top-level
+  PR comment instead of an inline thread — check both before merging, not
+  just review threads.
+- Once the automated reviewer has passed a PR's current head, never make an
+  unnecessary change to it without asking first: a to-do, tidy-up or extra fix
+  re-runs CI and the review for nothing, so it waits for a yes or goes in a
+  follow-up PR. A necessary change goes ahead unasked — a rebase where the
+  branch conflicts, or is behind where the repo requires it up to date, a fix
+  for red CI — and so does drive or autopilot.
 - Skip echoes of your own replies silently — a reply you just posted
   coming back as a new "comment" a moment later isn't new feedback.
 
